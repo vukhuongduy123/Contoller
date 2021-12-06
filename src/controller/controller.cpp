@@ -3,29 +3,31 @@
 #include <String>
 #include <array>
 namespace {
-constexpr char           kBroadCastMode = 1;
-constexpr int32_t        kMaxBuffer     = 4096;
-constexpr int32_t        kThreadNoErr   = 0;
-constexpr int32_t        kLastErrOk     = 0;
-constexpr WSADATA        kDefaultWsadata{0};
-constexpr int32_t        kWsaStartupOk    = 0;
-constexpr int32_t        kReqWinsockVer   = 2;
-constexpr int32_t        kFirstConnection = 1;
-constexpr int32_t        kTimeReval       = 100;
-constexpr int32_t        kServerPort      = 8080;
-constexpr int32_t        kStatusPort      = 8888;
-DWORD                    timeout[2]       = {static_cast<DWORD>(1000), 0};
-const int                size             = sizeof(DWORD);
-const char*              kLocalAddress    = "127.0.0.1";
+constexpr WSADATA kDefaultWsadata{0};
+constexpr char    kBroadCastMode       = 1;
+constexpr int32_t kMaxBuffer           = 4096;
+constexpr int32_t kThreadNoErr         = 0;
+constexpr int32_t kThreadCannotConnect = -1;
+constexpr int32_t kLastErrOk           = 0;
+constexpr int32_t kWsaStartupOk        = 0;
+constexpr int32_t kReqWinsockVer       = 2;
+constexpr int32_t kFirstConnection     = 1;
+constexpr int32_t kTimeReval           = 100;
+constexpr int32_t kServerPort          = 8080;
+constexpr int32_t kStatusPort          = 8888;
+DWORD             timeout[2]           = {static_cast<DWORD>(1000), 0};
+const int         size                 = sizeof(DWORD);
+const char*       kLocalAddress        = "127.0.0.1";
+const std::string kNewAddressCommand   = "NewConnection";
+const std::string kServerAcctepted     = "ServerAccepted";
+const std::string kServerNotRespon     = "ServerIsNotRespon";
+
 std::vector<std::string> default_command{
     "Close", "Add", "ChangeToServer", "SetNewRole"};
-const std::string        kNewAddressCommand = "NewConnection";
-const std::string        kServerAcctepted   = "ServerAccepted";
-const std::string        kServerNotRespon   = "ServerIsNotRespon";
 std::vector<std::string> set_role = {"unknown_role", "client", "server"};
 }  // namespace
 
-DWORD WINAPI ReadingThreadTCP(LPVOID param) {
+DWORD WINAPI ReadingThreadUDP(LPVOID param) {
     Controller* socket_node = static_cast<Controller*>(param);
     int32_t     size = sizeof(socket_node->controller_socket_.socket_cli_addr_);
     int32_t     result{};
@@ -65,7 +67,7 @@ DWORD WINAPI ReadingThreadTCP(LPVOID param) {
                 socket_node->controller_socket_.status_socket_ =
                     socket(AF_INET, SOCK_STREAM, 0);
 
-                sockaddr_in tmp;
+                sockaddr_in tmp{};
                 tmp.sin_family           = AF_INET;
                 tmp.sin_port             = htons(kStatusPort);
                 tmp.sin_addr.S_un.S_addr = inet_addr(kLocalAddress);
@@ -74,6 +76,8 @@ DWORD WINAPI ReadingThreadTCP(LPVOID param) {
                     connect(socket_node->controller_socket_.status_socket_,
                             reinterpret_cast<sockaddr*>(&tmp),
                             sizeof(tmp));
+                if (check == SOCKET_ERROR)
+                    return kThreadCannotConnect;
 
             } else {
                 sendto(socket_node->controller_socket_.socket_,
@@ -105,7 +109,9 @@ Controller::Controller() noexcept
     bind(controller_socket_.socket_,
          reinterpret_cast<sockaddr*>(&controller_socket_.socket_addr_),
          sizeof(sockaddr_in));
-    HANDLE thread = CreateThread(nullptr, 0, &ReadingThreadTCP, this, 0, 0);
-    WaitForSingleObject(thread, INFINITE);
-    CloseHandle(thread);
+    HANDLE thread = CreateThread(nullptr, 0, &ReadingThreadUDP, this, 0, 0);
+    if (thread) {
+        WaitForSingleObject(thread, INFINITE);
+        CloseHandle(thread);
+    }
 }

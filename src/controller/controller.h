@@ -1,5 +1,5 @@
-#ifndef REFACTOR_CONTROLLER_H
-#define REFACTOR_CONTROLLER_H
+#ifndef CONTROL_CONTROLLER_CONTROLLER_H
+#define CONTROL_CONTROLLER_CONTROLLER_H
 #include <memory>
 #include <vector>
 
@@ -25,6 +25,6 @@ class Controller {
 
     ~Controller() = default;
 
-    friend DWORD WINAPI ReadingThreadTCP(LPVOID);
+    friend DWORD WINAPI ReadingThreadUDP(LPVOID);
 };
-#endif  // REFACTOR_CONTROLLER_H
+#endif  // CONTROL_CONTROLLER_CONTROLLER_H

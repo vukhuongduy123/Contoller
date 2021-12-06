@@ -1,5 +1,5 @@
-#ifndef REFACTOR_SOCKETNODE_H
-#define REFACTOR_SOCKETNODE_H
+#ifndef CONTROL_SOCKETNODE_SOCKETNODE_H
+#define CONTROL_SOCKETNODE_SOCKETNODE_H
 #include <winsock2.h>
 #include <cstdint>
 #include <iostream>
@@ -38,10 +38,10 @@ class SocketNode {
     int32_t RecvFrom(std::string&) noexcept;
 
     friend class Controller;
-    friend DWORD WINAPI ReadingThreadTCP(LPVOID);
+    friend DWORD WINAPI ReadingThreadUDP(LPVOID);
 
    public:
     ~SocketNode();
 };
 
-#endif  // REFACTOR_SOCKETNODE_H
+#endif  // CONTROL_SOCKETNODE_SOCKETNODE_H
