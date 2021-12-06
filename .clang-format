@@ -1,0 +1,53 @@
+BasedOnStyle: Google
+IndentWidth: 4
+Language: Cpp
+AlignAfterOpenBracket: Align
+# AlignArrayOfStructures: Right
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveMacros: Consecutive
+AlignEscapedNewlines: Left
+AlignOperands: Align
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: true 
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BitFieldColonSpacing: Both
+BraceWrapping:
+ AfterCaseLabel: false
+ AfterClass: true
+ AfterControlStatement: Never
+ AfterEnum: true
+ AfterFunction: false
+ AfterNamespace: false
+ AfterStruct: false
+ AfterUnion: false
+ AfterExternBlock: false
+ BeforeCatch: false
+ BeforeElse: false
+ BeforeWhile: false
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Attach
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakStringLiterals: false
+CompactNamespaces: false
+Cpp11BracedListStyle: true
+FixNamespaceComments: true
+IncludeBlocks: Preserve
+# IndentAccessModifiers: true
+IndentCaseBlocks: false
+IndentGotoLabels: false
+IndentPPDirectives: BeforeHash
+IndentRequires: false
