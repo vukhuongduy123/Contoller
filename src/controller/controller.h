@@ -1,30 +1,20 @@
-#ifndef CONTROL_CONTROLLER_CONTROLLER_H
-#define CONTROL_CONTROLLER_CONTROLLER_H
-#include <memory>
-#include <vector>
-
-#include "socketnode.h"
-enum command { close_, add_, changerole_, newrole_ };
-
+#ifndef CONTROLLER_CONTROLLER_CONTROLLER_H
+#define CONTROLLER_CONTROLLER_CONTROLLER_H
+#include "socket.h"
+#include "loggerconsole.h"
 class Controller {
-   private:
-    SocketNode     controller_socket_;
-    static int32_t num_socket_;
-    WSADATA        wsadata_;
-
-    bool Init() noexcept;
+    Socket socket_node_;
+    LoggerConsole logger;
 
    public:
-    static constexpr int32_t kDefaultPort = 4444;
-    Controller() noexcept;
-
-    Controller(SocketNode&)  = delete;
-    Controller(Controller&&) = delete;
-    Controller& operator=(const Controller&) = delete;
+    Controller(const Controller&) = delete;
+    Controller(Controller&&)      = delete;
+    ~Controller()                 = default;
+    Controller& operator=(const Controller) = delete;
     Controller& operator=(Controller&&) = delete;
+    Controller(const std::string& role) noexcept;
 
-    ~Controller() = default;
-
-    friend DWORD WINAPI ReadingThreadUDP(LPVOID);
+    int32_t Run(const std::string& ip) noexcept;
 };
-#endif  // CONTROL_CONTROLLER_CONTROLLER_H
+
+#endif  // CONTROLLER_CONTROLLER_CONTROLLER_H

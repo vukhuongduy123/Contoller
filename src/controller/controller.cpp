@@ -1,117 +1,98 @@
 #include "controller.h"
-
-#include <String>
-#include <array>
+#include <time.h>
+#include <iomanip>
+#include <sstream>
+#include "socket.h"
 namespace {
-constexpr WSADATA kDefaultWsadata{0};
-constexpr char    kBroadCastMode       = 1;
-constexpr int32_t kMaxBuffer           = 4096;
-constexpr int32_t kThreadNoErr         = 0;
-constexpr int32_t kThreadCannotConnect = -1;
-constexpr int32_t kLastErrOk           = 0;
-constexpr int32_t kWsaStartupOk        = 0;
-constexpr int32_t kReqWinsockVer       = 2;
-constexpr int32_t kFirstConnection     = 1;
-constexpr int32_t kTimeReval           = 100;
-constexpr int32_t kServerPort          = 8080;
-constexpr int32_t kStatusPort          = 8888;
-DWORD             timeout[2]           = {static_cast<DWORD>(1000), 0};
-const int         size                 = sizeof(DWORD);
-const char*       kLocalAddress        = "127.0.0.1";
-const std::string kNewAddressCommand   = "NewConnection";
-const std::string kServerAcctepted     = "ServerAccepted";
-const std::string kServerNotRespon     = "ServerIsNotRespon";
+constexpr char    kBroadCastMode = 1;
+DWORD             timeout[2]     = {static_cast<DWORD>(1000), 0};
+constexpr int32_t kTimeoutSize   = sizeof(DWORD);
+constexpr int32_t kMaxBuffer     = 4096;
 
-std::vector<std::string> default_command{
-    "Close", "Add", "ChangeToServer", "SetNewRole"};
-std::vector<std::string> set_role = {"unknown_role", "client", "server"};
 }  // namespace
 
-DWORD WINAPI ReadingThreadUDP(LPVOID param) {
-    Controller* socket_node = static_cast<Controller*>(param);
-    int32_t     size = sizeof(socket_node->controller_socket_.socket_cli_addr_);
-    int32_t     result{};
-    std::string buf(kMaxBuffer, '\0');
-    do {
-        result =
-            recvfrom(socket_node->controller_socket_.socket_,
-                     buf.data(),
-                     buf.size(),
-                     0,
-                     reinterpret_cast<sockaddr*>(
-                         &socket_node->controller_socket_.socket_cli_addr_),
-                     &size);
-        buf[result] = '\0';
+std::string GetTime() {
+    struct tm newtime;
+    auto      t = std::time(nullptr);
+    localtime_s(&newtime, &t);
 
-        if (std::strcmp(buf.c_str(), kNewAddressCommand.c_str()) == 0) {
-            if (send(socket_node->controller_socket_.status_socket_,
-                     buf.data(),
-                     buf.size(),
-                     0) == SOCKET_ERROR) {
-                sendto(socket_node->controller_socket_.socket_,
-                       set_role[server_].data(),
-                       set_role[server_].size(),
-                       0,
-                       reinterpret_cast<sockaddr*>(
-                           &socket_node->controller_socket_.socket_cli_addr_),
-                       size);
-                recvfrom(socket_node->controller_socket_.socket_,
-                         buf.data(),
-                         buf.size(),
-                         0,
-                         reinterpret_cast<sockaddr*>(
-                             &socket_node->controller_socket_.socket_cli_addr_),
-                         &size);
-                shutdown(socket_node->controller_socket_.status_socket_,
-                         SD_BOTH);
-                socket_node->controller_socket_.status_socket_ =
-                    socket(AF_INET, SOCK_STREAM, 0);
+    std::ostringstream oss;
+    oss << "Current time: " << std::put_time(&newtime, "%d-%m-%Y %H-%M");
 
-                sockaddr_in tmp{};
-                tmp.sin_family           = AF_INET;
-                tmp.sin_port             = htons(kStatusPort);
-                tmp.sin_addr.S_un.S_addr = inet_addr(kLocalAddress);
+    return oss.str();
+}
 
-                int check =
-                    connect(socket_node->controller_socket_.status_socket_,
-                            reinterpret_cast<sockaddr*>(&tmp),
-                            sizeof(tmp));
-                if (check == SOCKET_ERROR)
-                    return kThreadCannotConnect;
+int32_t ConverToRole(const std ::string& role) {
+    if (role == "server")
+        return kServer;
+    else if (role == "client")
+        return kClient;
+    else
+        return kUnknownRole;
+}
 
-            } else {
-                sendto(socket_node->controller_socket_.socket_,
-                       set_role[client_].data(),
-                       set_role[client_].size(),
-                       0,
-                       reinterpret_cast<sockaddr*>(
-                           &socket_node->controller_socket_.socket_cli_addr_),
-                       size);
-            }
+Controller::Controller(const std::string& role) noexcept
+    : socket_node_(), logger() {
+    int32_t curr_role = ConverToRole(role);
+    if (curr_role == kUnknownRole)
+        return;
+    socket_node_.set_role(curr_role);
+}
+
+int32_t Controller::Run(const std::string& ip) noexcept {
+    int32_t     curr_role = socket_node_.get_role();
+    int32_t     res       = 0;
+    std::string text(kMaxBuffer, '\0');
+    while (curr_role != kUnknownRole) {
+        if (curr_role == kServer) {
+            logger.Write("server is running\n");
+            socket_node_.ShutDown();
+            socket_node_.set_socket(AF_INET, SOCK_DGRAM, 0);
+            socket_node_.set_socket_addr(
+                AF_INET, socket_node_.kDefaultPort, socket_node_.kLocalAddress);
+            socket_node_.SetOpt(SOL_SOCKET,
+                                SO_BROADCAST,
+                                &kBroadCastMode,
+                                sizeof(kBroadCastMode));
+            if (socket_node_.Bind() == SOCKET_ERROR)
+                return WSAGetLastError();
+
+            socket_node_.set_socket_addr(
+                AF_INET, socket_node_.kDefaultPort, INADDR_BROADCAST);
+            do {
+                std::string timetext = GetTime();
+                socket_node_.SendTo(timetext);
+            } while (true);
         }
-    } while (true);
-    return kThreadNoErr;
-}
+        if (curr_role == kClient) {
+            socket_node_.ShutDown();
+            socket_node_.set_socket(AF_INET, SOCK_DGRAM, 0);
+            socket_node_.set_socket_addr(
+                AF_INET, socket_node_.kDefaultPort, ip.c_str());
+            socket_node_.SetOpt(SOL_SOCKET,
+                                SO_RCVTIMEO,
+                                reinterpret_cast<char*>(&timeout),
+                                kTimeoutSize);
+            socket_node_.SetOpt(SOL_SOCKET,
+                                SO_BROADCAST,
+                                &kBroadCastMode,
+                                sizeof(kBroadCastMode));
+            if (socket_node_.Bind() == SOCKET_ERROR)
+                return WSAGetLastError();
 
-bool Controller::Init() noexcept {
-    if (WSAStartup(MAKEWORD(kReqWinsockVer, kReqWinsockVer), &wsadata_) ==
-            kWsaStartupOk &&
-        LOBYTE(wsadata_.wVersion) >= kReqWinsockVer)
-        return true;
-    return false;
-}
-
-Controller::Controller() noexcept
-    : controller_socket_(), wsadata_(kDefaultWsadata) {
-    Init();
-    controller_socket_.CreateSocket(SOCK_DGRAM, 0);
-    controller_socket_.set_socketaddr(AF_INET, kDefaultPort, ADDR_ANY);
-    bind(controller_socket_.socket_,
-         reinterpret_cast<sockaddr*>(&controller_socket_.socket_addr_),
-         sizeof(sockaddr_in));
-    HANDLE thread = CreateThread(nullptr, 0, &ReadingThreadUDP, this, 0, 0);
-    if (thread) {
-        WaitForSingleObject(thread, INFINITE);
-        CloseHandle(thread);
+            do {
+                res = socket_node_.RecvFrom(text);
+                if (res == SOCKET_ERROR && WSAGetLastError() == WSAETIMEDOUT)
+                    socket_node_.set_role(kServer);
+                else if (res == SOCKET_ERROR)
+                    return WSAGetLastError();
+                else {
+                    logger.Write(text.data());
+                    logger.Write("\n");
+                }
+            } while (res != SOCKET_ERROR);
+        }
+        curr_role = socket_node_.get_role();
     }
+    return 0;
 }
